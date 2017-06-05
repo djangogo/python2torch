@@ -77,11 +77,10 @@ torch.DoubleTensor
 >>> print output
 [array([  1.,   2.,   3.,   4.,   5.,   6.,   7.,   8.,   9.,  10.])]
 ```
+Note that, now we only support numpy.ndarray with dtype:np.float32, np.float64, np.byte, np.long, np.int
 
 And that's it!  What's missing?  While writing this README I found that I forgot to convert the following pytypes to their lua equivalent:
 ```
-
-Note that, now we only support numpy.ndarray with dtype:np.float32, np.float64, np.byte, np.long, np.int
 None
 dict
 ```
