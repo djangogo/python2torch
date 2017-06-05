@@ -318,7 +318,7 @@ cdef class PyTorchExtension(object):
                 arg.ravel(), size_tensor, stride_tensor)
             type_string = 'torch.IntTensor'
         else:
-            raise Exception('unknown dtype')
+            raise Exception('unknown dtype:{0}'.format(str(arg.dtype)))
         luaT_pushudata(self.L, torch_tensor, type_string)
 
     cdef PyToLuaString(self, str arg):
