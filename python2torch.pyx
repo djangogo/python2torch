@@ -49,6 +49,7 @@ cdef extern from "<TH/TH.h>":
     cdef struct THStorage
     cdef struct THTensor
     cdef struct THLongStorage
+    cdef struct THIntStorage
     cdef struct THFloatTensor
 
     cdef THStorage * THFloatStorage_newWithData(float *, long)
@@ -68,6 +69,10 @@ cdef extern from "<TH/TH.h>":
     cdef THStorage * THLongStorage_newWithData(long *, long)
     cdef THTensor * THLongTensor_newWithStorage(THStorage *, long,
                                                 THLongStorage*, THLongStorage*)
+                                                
+    cdef THStorage * THIntStorage_newWithData(int *, int)
+    cdef THTensor * THIntTensor_newWithStorage(THStorage *, long,
+                                                THLongStorage*, THLongStorage*)
 
     cdef THStorage * THLongStorage_newWithSize(long)
     cdef long * THLongStorage_data(const THStorage *)
@@ -76,6 +81,11 @@ cdef extern from "<TH/TH.h>":
     cdef int THFloatTensor_nDimension(const THTensor *)
     cdef long THFloatTensor_size(const THTensor *, int)
     cdef long THFloatTensor_stride(const THTensor *, int)
+
+    cdef int * THIntTensor_data(const THTensor *)
+    cdef int THIntTensor_nDimension(const THTensor *)
+    cdef int THIntTensor_size(const THTensor *, int)
+    cdef int THIntTensor_stride(const THTensor *, int)
 
     cdef double * THDoubleTensor_data(const THTensor *)
     cdef int THDoubleTensor_nDimension(const THTensor *)
@@ -147,6 +157,14 @@ cdef class PyTorchExtension(object):
         storage = THLongStorage_newWithData(& py[0], py.size)
         tensor = THLongTensor_newWithStorage(storage, 0, size, stride)
         return tensor
+
+    @staticmethod
+    cdef THTensor * PyToTHInt(np.ndarray[int] py, THLongStorage * size,
+                               THLongStorage * stride):
+        storage = THIntStorage_newWithData(& py[0], py.size)
+        tensor = THIntTensor_newWithStorage(storage, 0, size, stride)
+        return tensor
+
 
     @staticmethod
     cdef THLongStorage * PyArraySize(np.ndarray array):
@@ -228,6 +246,27 @@ cdef class PyTorchExtension(object):
         return array.reshape(shape)
 
     @staticmethod
+    cdef THToPyInt(THTensor * output_tensor):
+        num_dims = THIntTensor_nDimension(output_tensor)
+        shape = []
+        strides = []
+        for i in xrange(num_dims):
+            shape.append(THIntTensor_size(output_tensor, i))
+            strides.append(THIntTensor_stride(output_tensor, i))
+        data = THIntTensor_data(output_tensor)
+
+        total_size = 1
+        for size in shape:
+            total_size *= size
+
+        array = np.empty((total_size,), dtype=np.int)
+
+        for i in xrange(total_size):
+            array[i] = data[i]
+
+        return array.reshape(shape)
+
+    @staticmethod
     cdef THToPyByte(THTensor * output_tensor):
         num_dims = THByteTensor_nDimension(output_tensor)
         shape = []
@@ -274,6 +313,10 @@ cdef class PyTorchExtension(object):
             torch_tensor = PyTorchExtension.PyToTHLong(
                 arg.ravel(), size_tensor, stride_tensor)
             type_string = 'torch.LongTensor'
+        elif arg.dtype == np.int:
+            torch_tensor = PyTorchExtension.PyToTHInt(
+                arg.ravel(), size_tensor, stride_tensor)
+            type_string = 'torch.IntTensor'
         else:
             raise Exception('unknown dtype')
         luaT_pushudata(self.L, torch_tensor, type_string)
@@ -319,6 +362,8 @@ cdef class PyTorchExtension(object):
                 output_py = PyTorchExtension.THToPyFloat(output_tensor)
             elif typename == 'torch.LongTensor':
                 output_py = PyTorchExtension.THToPyLong(output_tensor)
+            elif typename == 'torch.IntTensor':
+                output_py = PyTorchExtension.THToPyInt(output_tensor)
             elif typename == 'torch.ByteTensor':
                 output_py = PyTorchExtension.THToPyByte(output_tensor)
             else:
